@@ -8,6 +8,7 @@ import os
 import re
 import shlex
 import shutil
+import time
 import uuid
 
 from math import floor
@@ -611,6 +612,17 @@ class Action(App):
             message = self._queue.get()
             self._handle_message(message)
             drain_count += 1
+        # Let's start with 1 second, and go up from there...
+        time.sleep(1)
+        if not self._queue.empty():
+            lost_count = 0
+            self._logger.debug("Race condition detected: queue is being drained too fast")
+            while not self._queue.empty():
+                message = self._queue.get()
+                self._handle_message(message)
+                drain_count += 1
+                lost_count += 1
+                self._logger.debug("Drained extra %s events", lost_count)
         if drain_count:
             self._logger.debug("Drained %s events", drain_count)
 
